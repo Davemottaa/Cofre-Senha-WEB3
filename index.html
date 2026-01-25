@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cofre Web3 Seguro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- MODAL STATUS -->
+    <div id="status-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div id="status-spinner" class="spinner"></div>
+            <h3 id="status-title" style="font-size: 24px; margin-bottom: 15px;">⏳ Aguarde, por favor...</h3>
+            <p id="status-msg" style="font-size: 16px; line-height: 1.6;">Estamos a processar. Não feche esta página.</p>
+        </div>
+    </div>
+
+    <!-- MODAL SEGURANÇA -->
+    <div id="security-modal" class="modal-overlay">
+        <div class="modal-card">
+            <i class="fas fa-user-shield" style="color: #ffc107; font-size: 60px;"></i>
+            <h2 style="font-size: 24px; margin-bottom: 20px;">🔒 Mostrar a Senha?</h2>
+            <p style="font-size: 16px; line-height: 1.8; margin-bottom: 20px;">
+                <strong>AVISO IMPORTANTE:</strong><br>
+                A senha será visível no ecrã. Certifique-se de que <strong>ninguém está vendo</strong> por cima do seu ombro.<br><br>
+                Deseja continuar?
+            </p>
+            <div class="modal-buttons">
+                <button onclick="closeModal('security-modal')" class="btn-cancel">✗ Não, cancelar</button>
+                <button id="confirm-view-btn" class="btn-confirm">✓ Sim, mostrar a senha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL APAGAR -->
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-card">
+            <i class="fas fa-exclamation-triangle" style="color: #dc3545; font-size: 60px;"></i>
+            <h2 style="font-size: 24px; margin-bottom: 20px;">⚠️ Tem a Certeza?</h2>
+            <p style="font-size: 16px; line-height: 1.8; margin-bottom: 20px;">
+                <strong>Esta ação é PERMANENTE!</strong><br>
+                A senha será removida de forma definitiva.<br><br>
+                <strong>Esta ação NÃO pode ser desfeita.</strong><br>
+                Depois de eliminar, não conseguirá recuperar esta senha.
+            </p>
+            <div class="modal-buttons">
+                <button onclick="closeModal('delete-modal')" class="btn-cancel">✗ Não, manter a senha</button>
+                <button id="confirm-delete-btn" class="btn-confirm" style="background: #dc3545;">✓ Sim, eliminar permanentemente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LOGOUT -->
+    <div id="logout-modal" class="modal-overlay">
+        <div class="modal-card">
+            <i class="fas fa-sign-out-alt" style="color: #e74c3c; font-size: 60px;"></i>
+            <h2 style="font-size: 24px; margin-bottom: 20px;">🚪 Sair do Cofre?</h2>
+            <p style="font-size: 16px; line-height: 1.8; margin-bottom: 20px;">
+                Está prestes a <strong>sair do seu Cofre Seguro</strong>.<br><br>
+                As suas senhas continuarão guardadas com segurança na Internet.<br>
+                Pode voltar a entrar a qualquer momento usando a sua carteira MetaMask.<br><br>
+                <strong>Deseja sair agora?</strong>
+            </p>
+            <div class="modal-buttons">
+                <button onclick="closeModal('logout-modal')" class="btn-cancel">✗ Não, ficar no Cofre</button>
+                <button id="confirm-logout-btn" class="btn-confirm" style="background: #e74c3c;">✓ Sim, sair agora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GERADOR AVANÇADO -->
+<div id="generator-modal" class="modal-overlay">
+    <div class="modal-card">
+        <i class="fas fa-wand-magic-sparkles" style="color: #6f42c1; font-size: 60px;"></i>
+        <h2 style="font-size: 24px; margin-bottom: 20px;">✨ Criar uma Senha Forte</h2>
+        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+            O computador vai gerar uma senha muito segura para si. Pode ajustar as opções abaixo.
+        </p>
+        
+        <div class="generator-content">
+            <!-- COLUNA ESQUERDA - OPÇÕES -->
+            <div class="generator-options">
+                <div class="input-group">
+                    <label style="font-size: 16px; font-weight: bold;">Tamanho da Senha: <span id="length-display" style="color: var(--primary); font-weight: bold;">14</span> caracteres</label>
+                    <input type="range" id="pass-length" min="8" max="32" value="14" 
+                        oninput="document.getElementById('length-display').innerText = this.value" style="width: 100%; cursor: pointer; height: 8px;">
+                    <small style="color: #999; display: block; margin-top: 8px;">Quanto maior, mais segura (mínimo 8, máximo 32)</small>
+                </div>
+
+                <div class="options-checkboxes" style="margin-top: 25px;">
+                    <p style="font-size: 14px; font-weight: bold; margin-bottom: 15px;">Incluir na senha:</p>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="pass-lower" checked>
+                        <span style="font-size: 15px;">Letras minúsculas (a, b, c...)</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="pass-upper" checked>
+                        <span style="font-size: 15px;">Letras MAIÚSCULAS (A, B, C...)</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="pass-numbers" checked>
+                        <span style="font-size: 15px;">Números (0, 1, 2...)</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="pass-symbols" checked>
+                        <span style="font-size: 15px;">Símbolos especiais (!@#$%&*)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- COLUNA DIREITA - BOTÕES -->
+            <div class="generator-buttons">
+                <button onclick="generateRandomPass()" class="btn-generate-now">
+                    <i class="fas fa-sync"></i> Gerar Senha Agora
+                </button>
+                <button onclick="closeModal('generator-modal')" class="btn-close-generator">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div class="container" id="main-container">
+        <!-- HEADER COM BOTÕES -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 style="color: var(--primary); margin: 0;"><i class="fas fa-vault"></i> Cofre</h1>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="toggleDarkMode()" style="background: var(--primary); border: none; padding: 10px 15px; border-radius: 10px; color: white; cursor: pointer;" title="Dark mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="logout-btn" onclick="logout()" style="background: #e74c3c; border: none; padding: 10px 15px; border-radius: 10px; color: white; cursor: pointer; display: none;" title="Desconectar">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- SECÇÃO AUTENTICAÇÃO -->
+        <div id="auth-section" style="text-align:center; padding: 20px 0;">
+            <div style="background: #f0f7ff; padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid var(--primary);">
+                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: var(--primary);">🔒 Bem-vindo ao Seu Cofre Seguro</h2>
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #555;">
+                    Guarde todas as suas senhas num único local seguro.<br>
+                    <strong>Primeiro passo:</strong> Clique no botão abaixo para conectar a sua carteira MetaMask.
+                </p>
+            </div>
+            <button class="btn-main" onclick="connectWallet()" style="font-size: 18px; padding: 20px;">
+                <i class="fas fa-key"></i> Entrar no meu Cofre
+            </button>
+        </div>
+
+        <!-- SECÇÃO APP -->
+        <div id="app-section" style="display:none;">
+            <div style="text-align: center; margin-bottom: 15px; font-size: 13px; color: #666;">
+                <strong>Conectado como:</strong> <span id="user-address" style="font-family: monospace; background: #f0f0f0; padding: 3px 8px; border-radius: 5px;">-</span>
+            </div>
+
+            <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                <strong style="color: #856404;">💡 Dica:</strong>
+                <p style="margin: 8px 0 0 0; font-size: 13px; color: #856404;">
+                    Preencha os dados abaixo para guardar uma nova senha. Pode usar o botão "Criar" para gerar uma senha muito segura automaticamente.
+                </p>
+            </div>
+
+            <div class="input-group">
+                <label style="font-weight: bold; font-size: 15px;">📌 Qual o Site / Aplicação?</label>
+                <input type="text" id="siteName" placeholder="Ex: Facebook, Gmail, Amazon, Instagram..." style="font-size: 15px;">
+                <small style="color: #999; display: block; margin-top: 5px;">Nome do serviço onde vai usar a senha</small>
+            </div>
+
+            <div class="input-group">
+                <label style="font-weight: bold; font-size: 15px;">👤 Qual o seu Utilizador ou Email?</label>
+                <input type="text" id="siteUser" placeholder="Ex: seu@email.com ou seu.nome" style="font-size: 15px;">
+                <small style="color: #999; display: block; margin-top: 5px;">(Opcional - pode deixar em branco)</small>
+            </div>
+
+            <div class="input-group">
+                <label style="font-weight: bold; font-size: 15px;">🔐 A Sua Senha Secreta</label>
+                <div class="input-with-button">
+                    <input type="text" id="sitePass" placeholder="Escreva uma senha ou clique em Criar para gerar uma" style="font-size: 15px;">
+                    <button id="btn-copy-generated" onclick="copyGeneratedPass()" class="btn-card btn-copiar" style="display:none; font-size: 13px;">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                </div>
+            </div>
+
+            <div class="action-row">
+                <button class="btn-blockchain-save" onclick="saveAndSync()" style="font-size: 16px; font-weight: bold;">
+                    <i class="fas fa-cloud-upload-alt"></i> 💾 Guardar Senha
+                </button>
+                <button class="btn-generate-magic" onclick="showPasswordGenerator()" style="font-size: 16px; font-weight: bold;">
+                    <i class="fas fa-wand-magic-sparkles"></i> ✨ Criar
+                </button>
+            </div>
+
+            <hr style="margin: 25px 0;">
+            
+            <div id="sync-status-area">
+                <h3 id="sync-status-text" style="text-align: center; font-size: 14px; font-weight: bold; margin: 15px 0;">...</h3>
+                <button class="btn-blockchain-recover" onclick="downloadFromBlockchain()" style="font-size: 15px;">
+                    <i class="fas fa-sync"></i> Atualizar Cofre
+                </button>
+            </div>
+
+            <div style="background: #e8f4f8; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 4px solid var(--primary);">
+                <p style="margin: 0; font-size: 13px; color: #333; line-height: 1.6;">
+                    <strong>📝 As suas senhas guardadas:</strong><br>
+                    Abaixo encontra todas as senhas que guardou com segurança. Clique em "Ver" para mostrar a senha, ou "Apagar" para removê-la permanentemente.
+                </p>
+            </div>
+
+            <div id="passwordList" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

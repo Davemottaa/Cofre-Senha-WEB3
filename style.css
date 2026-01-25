@@ -1,0 +1,325 @@
+:root {
+    --primary: #8247e5; --bg: #f8f9fa; --text: #2c3e50;
+    --success: #27ae60; --warning: #f1c40f; --danger: #e74c3c;
+}
+
+html[data-theme="dark"] {
+    --primary: #9d5aff;
+    --bg: #1e1e2e;
+    --text: #e0e0e0;
+}
+
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background: var(--bg); 
+    color: var(--text);
+    margin: 0; 
+    padding: 10px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.container { 
+    max-width: 480px; margin: 20px auto; 
+    background: var(--bg); 
+    padding: 25px; 
+    border-radius: 30px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border: 5px solid #eee;
+    transition: background-color 0.3s;
+}
+
+html[data-theme="dark"] .container {
+    border-color: #333;
+}
+
+.status-pending { border-color: var(--warning) !important; }
+.status-saved { border-color: var(--success) !important; }
+
+.input-group { margin-bottom: 15px; }
+label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: var(--text); opacity: 0.8; }
+input { 
+    width: 100%; 
+    padding: 14px; 
+    border: 2px solid #ddd; 
+    border-radius: 15px; 
+    font-size: 16px; 
+    box-sizing: border-box;
+    background: var(--bg);
+    color: var(--text);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+html[data-theme="dark"] input {
+    border-color: #444;
+    background: #2a2a3e;
+}
+
+.input-with-button {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: transparent;
+}
+
+.input-with-button input {
+    flex: 1;
+}
+
+#btn-copy-generated {
+    height: 50px;
+    padding: 0 20px;
+    border-radius: 15px;
+    flex: none;
+    display: none;
+}
+
+.action-row { display: flex; gap: 10px; margin-top: 15px; }
+button { border: none; border-radius: 15px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 15px; }
+
+.btn-main { background: var(--primary); padding: 18px; width: 100%; }
+.btn-blockchain-save { background: var(--success); flex: 2; padding: 18px; }
+.btn-generate-magic { background: #6f42c1; flex: 1; padding: 18px; }
+.btn-blockchain-recover { background: var(--primary); padding: 15px; width: 100%; margin-top: 10px; }
+
+/* CARTÕES DE SENHA */
+.pass-card { 
+    background: var(--bg); 
+    padding: 20px; 
+    border: 2px solid #f1f1f1; 
+    border-radius: 20px; 
+    margin-top: 15px;
+    transition: background-color 0.3s;
+}
+
+html[data-theme="dark"] .pass-card {
+    border-color: #333;
+    background: #2a2a3e;
+}
+
+.pass-info b { font-size: 18px; color: var(--primary); }
+.pass-display { 
+    background: #fdfdfd; 
+    padding: 15px; 
+    border-radius: 12px; 
+    text-align: center; 
+    font-family: monospace; 
+    font-size: 20px; 
+    border: 1px dashed #ccc; 
+    margin: 15px 0;
+    transition: background-color 0.3s;
+}
+
+html[data-theme="dark"] .pass-display {
+    background: #1e1e2e;
+    border-color: #444;
+}
+
+.btn-group-card { display: flex; gap: 10px; }
+.btn-card { flex: 1; padding: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-ver { background: var(--primary); }
+.btn-copiar { background: #34495e; animation: fadeIn 0.3s; }
+.btn-apagar { background: #95a5a6; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* MODAIS - MELHORADO PARA ACESSIBILIDADE */
+.modal-overlay { 
+    display: none; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(0,0,0,0.85); 
+    z-index: 10000; 
+    justify-content: center; 
+    align-items: center; 
+}
+
+.modal-card { 
+    background: var(--bg);
+    padding: 50px; 
+    border-radius: 30px; 
+    text-align: center; 
+    width: 90%; 
+    max-width: 550px;
+    color: var(--text);
+    transition: background-color 0.3s;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Título do modal - maior e mais legível */
+.modal-card h2 {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 30px;
+    color: var(--primary);
+}
+
+/* Senha gerada - MUITO MAIOR */
+.modal-password-display {
+    background: #fdfdfd;
+    padding: 30px;
+    border-radius: 15px;
+    border: 3px solid var(--primary);
+    margin: 30px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    word-break: break-all;
+    color: var(--primary);
+    line-height: 1.8;
+}
+
+html[data-theme="dark"] .modal-password-display {
+    background: #2a2a3e;
+    border-color: #9d5aff;
+    color: #9d5aff;
+}
+
+/* LAYOUT DO GERADOR - DUAS COLUNAS */
+.generator-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+    margin-top: 30px;
+}
+
+/* COLUNA ESQUERDA - OPÇÕES */
+.generator-options {
+    text-align: left;
+}
+
+.generator-options .input-group {
+    margin-bottom: 25px;
+}
+
+.generator-options label {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.options-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    user-select: none;
+}
+
+.checkbox-option input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.checkbox-option span {
+    display: block;
+}
+
+/* COLUNA DIREITA - BOTÕES */
+.generator-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.btn-generate-now {
+    background: var(--success);
+    padding: 25px 20px !important;
+    font-size: 18px !important;
+    border-radius: 15px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 60px;
+    transition: 0.3s;
+}
+
+.btn-generate-now:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
+.btn-close-generator {
+    background: #bdc3c7;
+    padding: 20px !important;
+    font-size: 16px !important;
+    border-radius: 15px;
+    font-weight: bold;
+}
+
+.btn-close-generator:hover {
+    opacity: 0.8;
+}
+
+/* Botões do modal - MUITO MAIORES */
+.modal-buttons { 
+    display: flex; 
+    gap: 15px; 
+    margin-top: 30px;
+    flex-direction: column;
+}
+
+.btn-confirm, .btn-cancel { 
+    padding: 20px !important; 
+    font-size: 18px !important;
+    border-radius: 15px;
+    font-weight: bold;
+}
+
+.btn-confirm { 
+    background: var(--primary); 
+    width: 100%;
+}
+
+.btn-cancel { 
+    background: #bdc3c7; 
+    width: 100%;
+}
+
+/* Spinner - maior e mais visível */
+.spinner { 
+    width: 80px; 
+    height: 80px; 
+    border: 8px solid #f3f3f3; 
+    border-top: 8px solid var(--primary); 
+    border-radius: 50%; 
+    animation: spin 1s linear infinite; 
+    margin: 0 auto 25px; 
+}
+
+html[data-theme="dark"] .spinner {
+    border-color: #444;
+    border-top-color: #9d5aff;
+}
+
+/* Texto de instrução */
+.modal-instruction {
+    font-size: 18px;
+    margin: 20px 0;
+    color: var(--text);
+    opacity: 0.9;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
