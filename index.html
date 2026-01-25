@@ -6,6 +6,15 @@
     <title>Cofre Web3 Seguro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Segurança para MetaMask em GitHub Pages -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self' https:; 
+                   script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; 
+                   connect-src 'self' https://sepolia.infura.io https://api.pimlico.io https://mainnet.infura.io;">
+    
+    <!-- Permite acesso a window.ethereum -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
     <!-- MODAL STATUS -->
