@@ -287,7 +287,7 @@ async function validateNetwork() {
         
         // Verificar se rede está suportada
         if (!SUPPORTED_NETWORKS[chainId]) {
-            console.error(`❌ ChainId ${chainId} não suportado!`);
+            console.error(`❌ ERRO: ChainId ${chainId} não suportada!`);
             showError(
                 "❌ Rede Errada",
                 `Está na rede ${network.name}.\n\n` +
@@ -600,14 +600,25 @@ function decryptFull(cipher) {
  */
 async function connectWallet() {
     try {
-        // 1. Detectar mobile vs desktop
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         console.log(`📱 Detectado: ${isMobile ? 'Mobile' : 'Desktop'}`);
         
-        // 2-3. Verificar se MetaMask está instalada
+        // NOVO: Diagnosticar problema
+        console.log('🔍 DIAGNÓSTICO:');
+        console.log(`  - window.ethereum existe? ${!!window.ethereum}`);
+        console.log(`  - HTTPS? ${window.location.protocol === 'https:'}`);
+        console.log(`  - Domínio: ${window.location.hostname}`);
+        console.log(`  - URL completa: ${window.location.href}`);
+        
         if (!window.ethereum) {
+            console.warn('⚠️ window.ethereum NÃO ENCONTRADO!');
+            console.warn('  Causas possíveis:');
+            console.warn('  1. Página via HTTP (precisa HTTPS)');
+            console.warn('  2. MetaMask não está instalada');
+            console.warn('  3. Content Security Policy está a bloquear');
+            console.warn('  4. Injeção de script foi bloqueada');
+            
             if (isMobile) {
-                // Mobile: redirecionar para app MetaMask
                 showProcessing("📱 Abrindo MetaMask...", "Redirecionando para o app...");
                 setTimeout(() => {
                     window.location.href = "https://metamask.app.link/dapp/" + 
@@ -615,65 +626,60 @@ async function connectWallet() {
                 }, 1500);
                 return;
             } else {
-                // Desktop: mostrar instruções de instalação
                 showError(
                     "❌ MetaMask Não Encontrada",
                     "Você precisa instalar a extensão MetaMask.\n\n" +
-                    "1. Visite: https://metamask.io\n" +
-                    "2. Clique em \"Download\"\n" +
-                    "3. Escolha seu navegador\n" +
-                    "4. Siga as instruções de instalação"
+                    "IMPORTANTE:\n" +
+                    "✓ Certifique-se de que está usando HTTPS\n" +
+                    "✓ Recarregue a página (Ctrl+Shift+R)\n" +
+                    "✓ Se continuar, tente em outro navegador"
                 );
                 return;
             }
         }
         
-        // 4a. Conectar à carteira
         showProcessing("🔐 A Conectar à Carteira", 
                       "Por favor, confirme na janela da MetaMask que aparece.");
         const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
         await provider.detectNetwork();
         
-        // Validar rede antes de continuar
         if (!await validateNetwork()) {
             hideProcessing();
             return;
         }
         
-        // 4b. Pedir acesso às contas
         await provider.send("eth_requestAccounts", []);
         const signer = provider.getSigner();
         currentUser = await signer.getAddress();
         
-        // 4c. Pedir assinatura de mensagem
         const message = `Aceder ao Cofre Seguro\nConta: ${currentUser}`;
         showProcessing("✍️ A Assinar Mensagem", 
                       "Confirme a assinatura na MetaMask (isto é seguro).");
         const sig = await signer.signMessage(message);
         
-        // 4d. Gerar chave encriptação a partir da assinatura
         encryptionKey = ethers.utils.keccak256(sig);
         
-        // 4e. Guardar sessão em sessionStorage
         sessionStorage.setItem('encryption_key', encryptionKey);
         sessionStorage.setItem('current_user', currentUser);
         sessionStorage.setItem('current_chain_id', currentNetworkChainId.toString());
         
-        // Mostrar interface da aplicação
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('app-section').style.display = 'block';
         document.getElementById('logout-btn').style.display = 'block';
         document.getElementById('user-address').innerText = 
             `${currentUser.substring(0, 6)}...${currentUser.substring(38)} (Sepolia)`;
         
-        // 4f. Carregar senhas do blockchain
         showProcessing("📥 A Carregar Senhas", "Buscando na blockchain...");
         await downloadFromBlockchain();
         
     } catch (e) {
         console.error('❌ Erro ao conectar:', e);
+        console.error('Detalhes:', {
+            message: e.message,
+            code: e.code,
+            stack: e.stack
+        });
         
-        // Mostrar erro apropriado para mobile/desktop
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         if (isMobile) {
             showError(
@@ -691,7 +697,8 @@ async function connectWallet() {
                 "Certifique-se de que:\n" +
                 "✓ MetaMask está instalada\n" +
                 "✓ Você clicou em \"Confirmar\"\n" +
-                "✓ Está na rede Sepolia"
+                "✓ Está na rede Sepolia\n" +
+                "✓ A página usa HTTPS"
             );
         }
     }
