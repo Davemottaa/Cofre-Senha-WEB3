@@ -1,53 +1,11 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- ESSENCIAL: Permitir MetaMask em GitHub Pages -->
-    <meta http-equiv="Content-Security-Policy" 
-          content="default-src 'self' https:; 
-                   script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; 
-                   connect-src 'self' https://sepolia.infura.io https://api.pimlico.io https://mainnet.infura.io https://*.ethereum.org;">
-    
-    <meta name="description" content="Gestor de senhas descentralizado em Ethereum">
-    <meta name="theme-color" content="#1a1a1a">
-    
     <title>Cofre Web3 Seguro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    
-    <style>
-        /* Estilos dos botões do header */
-        .header-buttons {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .header-btn {
-            background: var(--primary);
-            border: none;
-            padding: 10px 15px;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-        
-        .header-btn:hover {
-            opacity: 0.8;
-            transform: scale(1.05);
-        }
-        
-        .btn-logout {
-            background: #e74c3c;
-        }
-        
-        .btn-logout:hover {
-            background: #c0392b;
-        }
-    </style>
 </head>
 <body>
     <!-- MODAL STATUS -->
@@ -173,7 +131,7 @@
                 <button onclick="toggleDarkMode()" style="background: var(--primary); border: none; padding: 10px 15px; border-radius: 10px; color: white; cursor: pointer;" title="Dark mode">
                     <i class="fas fa-moon"></i>
                 </button>
-                <button id="logout-btn" onclick="logout()" class="btn-logout" style="display: none;" title="Desconectar">
+                <button id="logout-btn" onclick="logout()" style="background: #e74c3c; border: none; padding: 10px 15px; border-radius: 10px; color: white; cursor: pointer; display: none;" title="Desconectar">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
