@@ -257,20 +257,51 @@ function getMetaMaskDappUrl() {
     return 'https://link.metamask.io/dapp/' + encodeURIComponent(url);
 }
 
+/**
+ * No navegador in-app da MetaMask (mobile), o provider é injetado com atraso.
+ * Esperamos pelo evento 'ethereum#initialized' ou um timeout antes de redirecionar.
+ * Assim, quando o utilizador já está na MetaMask, o clique em "Entrar" acaba por
+ * receber o provider e mostrar o ecrã de autorização em vez de recarregar a página.
+ */
+function waitForEthereum(timeoutMs) {
+    timeoutMs = timeoutMs || 3000;
+    if (window.ethereum) return Promise.resolve(window.ethereum);
+    return new Promise((resolve) => {
+        let resolved = false;
+        const done = (p) => {
+            if (resolved) return;
+            resolved = true;
+            resolve(p || null);
+        };
+        window.addEventListener('ethereum#initialized', () => done(window.ethereum), { once: true });
+        setTimeout(() => done(window.ethereum), timeoutMs);
+    });
+}
+
 async function connectWallet() {
-    if (!window.ethereum) {
-        if (isMobile()) {
-            // No telemóvel: redirecionar para abrir o site na MetaMask e mostrar o ecrã de autorização
+    let provider = window.ethereum;
+    if (!provider && isMobile()) {
+        // No telemóvel: esperar pela injeção do provider (MetaMask in-app injeta com atraso)
+        showProcessing("⏳ A carregar...", "A aguardar pela MetaMask...");
+        provider = await waitForEthereum(3000);
+        hideProcessing();
+        if (!provider) {
+            // Continua sem provider: abrir o site na app MetaMask
             window.location.href = getMetaMaskDappUrl();
             return;
         }
+    }
+    if (!provider) {
         showError("❌ MetaMask Não Encontrada", "Por favor, instale a MetaMask.");
         return;
     }
 
+    // Usar o provider (pode ser window.ethereum ou o que acabou de ser injetado)
+    const ethereum = provider;
+
     try {
         showProcessing("🔐 A Conectar", "Confirme na MetaMask...");
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const web3Provider = new ethers.providers.Web3Provider(ethereum);
         
         // Valida a rede antes de qualquer coisa
         const networkOk = await validateNetwork();
@@ -279,8 +310,8 @@ async function connectWallet() {
             return;
         }
         
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
+        await web3Provider.send("eth_requestAccounts", []);
+        const signer = web3Provider.getSigner();
         currentUser = await signer.getAddress();
         
         // Criar chave de encriptação baseada na assinatura do utilizador.
@@ -651,12 +682,17 @@ document.addEventListener('DOMContentLoaded', initTheme);
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
 
-    // No telemóvel sem MetaMask injetada: mostrar botão "Abrir na MetaMask"
+    // No telemóvel: esperar um pouco pela injeção do provider (MetaMask in-app injeta com atraso).
+    // Só depois mostrar "Abrir na MetaMask" se ainda não houver window.ethereum.
     const mobileHint = document.getElementById('mobile-metamask-hint');
     const mobileLink = document.getElementById('mobile-metamask-link');
-    if (mobileHint && mobileLink && isMobile() && !window.ethereum) {
-        mobileHint.style.display = 'block';
-        mobileLink.href = getMetaMaskDappUrl();
+    if (mobileHint && mobileLink && isMobile()) {
+        waitForEthereum(2500).then((p) => {
+            if (!p) {
+                mobileHint.style.display = 'block';
+                mobileLink.href = getMetaMaskDappUrl();
+            }
+        });
     }
 
     const btnConnect = document.getElementById('btnConnect');
