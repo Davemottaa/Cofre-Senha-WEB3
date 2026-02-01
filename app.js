@@ -6,6 +6,17 @@ let currentUser = null;
 let isOnCorrectNetwork = false;
 let currentNetworkChainId = null;
 
+// Login Web2 (Google): dados guardados apenas no dispositivo (sem blockchain)
+let isGoogleUser = false;
+let googleUserId = null;
+
+/**
+ * Login Google (Web2): coloque aqui o Client ID do Google Cloud Console.
+ * Criar em: Google Cloud Console → APIs e Serviços → Credenciais → Criar credenciais → ID de cliente OAuth 2.0 (tipo: Aplicação da Web).
+ * Deixe vazio ('') para desativar o login com Google.
+ */
+const GOOGLE_CLIENT_ID = '707254983061-vg2dm7p37e53vct5ooleas7o9vui7kf7.apps.googleusercontent.com';
+
 // Configuração de redes suportadas
 const SUPPORTED_NETWORKS = {
     11155111: { // Sepolia
@@ -127,18 +138,33 @@ if (window.ethereum) {
     });
 }
 
+/** Chave do localStorage para as senhas (Web3 = my_passwords, Web2 = por conta Google). */
+function getPasswordsStorageKey() {
+    return isGoogleUser && googleUserId ? 'my_passwords_google_' + googleUserId : 'my_passwords';
+}
+
+/** Chave do localStorage para o hash de sincronização. */
+function getLastSyncHashKey() {
+    return isGoogleUser && googleUserId ? 'last_sync_hash_google_' + googleUserId : 'last_sync_hash';
+}
+
 // Limpeza segura de dados sensíveis
 function secureClear() {
+    if (googleUserId) {
+        localStorage.removeItem('my_passwords_google_' + googleUserId);
+        localStorage.removeItem('last_sync_hash_google_' + googleUserId);
+    }
+    googleUserId = null;
+    isGoogleUser = false;
     encryptionKey = null;
     currentUser = null;
     lastSyncedData = "";
-    currentNetworkChainId = null; // 🔴 Também limpar chainId
-    
-    // Remover dados criptografados do localStorage
+    currentNetworkChainId = null;
+
     localStorage.removeItem('my_passwords');
     localStorage.removeItem('last_synced_data');
     localStorage.removeItem('last_sync_hash');
-    
+
     // Limpar inputs
     document.getElementById('siteName').value = "";
     document.getElementById('siteUser').value = "";
@@ -155,9 +181,10 @@ function getLocalStorageEncrypted(key) {
             console.error('Chave de encriptação não disponível');
             return null;
         }
-        const encrypted = localStorage.getItem(key);
+        const storageKey = key === 'my_passwords' ? getPasswordsStorageKey() : key;
+        const encrypted = localStorage.getItem(storageKey);
         if (!encrypted) return null;
-        
+
         const decrypted = CryptoJS.AES.decrypt(encrypted, encryptionKey);
         if (!decrypted || decrypted.length === 0) {
             console.error('Falha ao desencriptar - dados corrompidos');
@@ -174,8 +201,9 @@ function getLocalStorageEncrypted(key) {
 
 function setLocalStorageEncrypted(key, data) {
     try {
+        const storageKey = key === 'my_passwords' ? getPasswordsStorageKey() : key;
         const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), encryptionKey).toString();
-        localStorage.setItem(key, encrypted);
+        localStorage.setItem(storageKey, encrypted);
     } catch (e) {
         console.error('Erro ao encriptar localStorage:', e);
         throw e;
@@ -336,19 +364,110 @@ async function connectWallet() {
         showError("❌ Erro ao Conectar", "Conexão recusada ou falhou.");
     }
 }
+
+// --- LOGIN GOOGLE (WEB2) ---
+/** Decodifica o payload do JWT do Google (base64url). */
+function decodeGoogleJwtPayload(credential) {
+    try {
+        const parts = credential.split('.');
+        if (parts.length !== 3) return null;
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(decodeURIComponent(escape(atob(base64))));
+    } catch (e) {
+        return null;
+    }
+}
+
+function handleGoogleSignIn(response) {
+    if (!response?.credential) {
+        showError("❌ Erro Google", "Não foi possível obter os dados da conta Google.");
+        return;
+    }
+    const payload = decodeGoogleJwtPayload(response.credential);
+    if (!payload?.sub) {
+        showError("❌ Erro Google", "Resposta da Google inválida.");
+        return;
+    }
+    const sub = payload.sub;
+    const email = payload.email || payload.sub;
+    const name = payload.name || email;
+
+    showProcessing("🔐 A entrar...", "A configurar o seu cofre.");
+    try {
+        // Chave de encriptação determinística por conta Google (para poder desencriptar ao voltar)
+        encryptionKey = CryptoJS.SHA256("CofreSeguro_Google_" + sub).toString();
+        currentUser = email;
+        isGoogleUser = true;
+        googleUserId = sub;
+
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('app-section').style.display = 'block';
+        document.getElementById('logout-btn').style.display = 'block';
+        document.getElementById('user-address').innerText = name + ' (Google)';
+        document.getElementById('user-address').style.fontFamily = 'inherit';
+
+        const syncArea = document.getElementById('sync-status-area');
+        const web2Notice = document.getElementById('web2-notice');
+        if (syncArea) syncArea.style.display = 'none';
+        if (web2Notice) web2Notice.style.display = 'block';
+
+        renderPasswords();
+        hideProcessing();
+    } catch (e) {
+        console.error(e);
+        hideProcessing();
+        showError("❌ Erro ao entrar", "Ocorreu um erro. Tente novamente.");
+    }
+}
+
+/** Inicializa o botão "Entrar com Google" quando o script GIS estiver disponível. */
+function initGoogleSignIn() {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_ID.trim()) return;
+    const container = document.getElementById('google-signin-container');
+    if (!container) return;
+    if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+        setTimeout(initGoogleSignIn, 150);
+        return;
+    }
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID.trim(),
+        callback: handleGoogleSignIn,
+        auto_select: false
+    });
+    google.accounts.id.renderButton(container, {
+        type: 'standard',
+        theme: 'filled_black',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'rectangular',
+        width: 280
+    });
+}
+
 function logout() {
+    const modal = document.getElementById('logout-modal');
+    const msg = modal ? modal.querySelector('p') : null;
+    if (msg && isGoogleUser) {
+        msg.innerHTML = 'Está prestes a <strong>sair do seu Cofre</strong>.<br><br>' +
+            'As suas senhas ficam guardadas neste dispositivo.<br>' +
+            'Pode voltar a entrar com a mesma conta Google.<br><br><strong>Deseja sair agora?</strong>';
+    } else if (msg) {
+        msg.innerHTML = 'Está prestes a <strong>sair do seu Cofre Seguro</strong>.<br><br>' +
+            'As suas senhas continuarão guardadas com segurança na Internet.<br>' +
+            'Pode voltar a entrar a qualquer momento usando a sua carteira MetaMask.<br><br><strong>Deseja sair agora?</strong>';
+    }
     showModal('logout-modal');
     document.getElementById('confirm-logout-btn').onclick = () => {
         closeModal('logout-modal');
-        
-        // Limpeza segura de todos os dados sensíveis
         secureClear();
-        
         document.getElementById('auth-section').style.display = 'block';
         document.getElementById('app-section').style.display = 'none';
         document.getElementById('logout-btn').style.display = 'none';
         isOnCorrectNetwork = false;
-        
+        const syncArea = document.getElementById('sync-status-area');
+        const web2Notice = document.getElementById('web2-notice');
+        if (syncArea) syncArea.style.display = '';
+        if (web2Notice) web2Notice.style.display = 'none';
         showProcessing("Desconectado", "Até à próxima!");
         setTimeout(hideProcessing, 1500);
     };
@@ -364,8 +483,8 @@ async function saveAndSync() {
         return;
     }
     
-    // Verificar se está na rede correta
-    if (!isOnCorrectNetwork) {
+    // Web3: verificar rede
+    if (!isGoogleUser && !isOnCorrectNetwork) {
         showError("❌ Rede Errada", "Você não está na rede Sepolia!\n\nPor favor:\n1. Abra a MetaMask\n2. Mude para Sepolia Testnet\n3. Tente novamente");
         return;
     }
@@ -376,42 +495,35 @@ async function saveAndSync() {
         passwords.push({ id: Date.now(), site, user, pass });
         const enc = encryptFull(passwords);
 
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // 🔴 FIX: Usar endereço DINÂMICO baseado na rede atual
-        const contractAddr = getContractAddressForCurrentNetwork();
-        if (!contractAddr) {
-            console.error('❌ ERRO: getContractAddressForCurrentNetwork() retornou null ou inválido!');
-            console.error(`   isOnCorrectNetwork: ${isOnCorrectNetwork}`);
-            console.error(`   currentNetworkChainId: ${currentNetworkChainId}`);
-            showError("❌ Erro de Configuração", "Não conseguimos obter o endereço do contrato.\n\nPor favor:\n1. Recarregue a página (F5)\n2. Desconecte e conecte novamente na MetaMask\n3. Tente novamente");
-            return;
+        if (isGoogleUser) {
+            setLocalStorageEncrypted('my_passwords', passwords);
+            localStorage.setItem(getLastSyncHashKey(), calculateHash(passwords));
+            renderPasswords();
+            showProcessing("✅ Sucesso!", "A sua senha foi guardada neste dispositivo.");
+            setTimeout(hideProcessing, 2000);
+        } else {
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const contractAddr = getContractAddressForCurrentNetwork();
+            if (!contractAddr) {
+                showError("❌ Erro de Configuração", "Não conseguimos obter o endereço do contrato. Recarregue a página.");
+                return;
+            }
+            if (!contractAddr.startsWith('0x') || contractAddr.length !== 42) {
+                showError("❌ Erro de Configuração", "Endereço do contrato inválido.");
+                return;
+            }
+            const contract = new ethers.Contract(contractAddr, abi, provider.getSigner());
+            const tx = await contract.salvarCofre(enc);
+            showProcessing("⏳ Confirmando na Internet", "A rede está a confirmar a sua ação. Isto pode demorar alguns segundos...");
+            await tx.wait();
+            setLocalStorageEncrypted('my_passwords', passwords);
+            lastSyncedData = enc;
+            localStorage.setItem(getLastSyncHashKey(), calculateHash(passwords));
+            renderPasswords();
+            showProcessing("✅ Sucesso!", "A sua senha foi guardada com segurança!");
+            setTimeout(hideProcessing, 2000);
         }
-        
-        // Verificar se o endereço é válido (formato Ethereum)
-        if (!contractAddr.startsWith('0x') || contractAddr.length !== 42) {
-            console.error(`❌ ERRO: Endereço do contrato inválido: ${contractAddr}`);
-            showError("❌ Erro de Configuração", "Endereço do contrato inválido. Contacte o suporte.");
-            return;
-        }
-        
-        console.log(`📝 A guardar senha para contrato: ${contractAddr}`);
-        const contract = new ethers.Contract(contractAddr, abi, provider.getSigner());
-        const tx = await contract.salvarCofre(enc);
-        
-        showProcessing("⏳ Confirmando na Internet", "A rede está a confirmar a sua ação. Isto pode demorar alguns segundos...");
-        await tx.wait();
 
-        setLocalStorageEncrypted('my_passwords', passwords);
-        lastSyncedData = enc;
-        localStorage.setItem('last_sync_hash', calculateHash(passwords));
-        renderPasswords();
-        
-        // Mostrar sucesso
-        showProcessing("✅ Sucesso!", "A sua senha foi guardada com segurança!");
-        setTimeout(hideProcessing, 2000);
-        
-        // Limpar inputs após sucesso
         document.getElementById('siteName').value = "";
         document.getElementById('siteUser').value = "";
         document.getElementById('sitePass').value = "";
@@ -423,6 +535,10 @@ async function saveAndSync() {
 }
 
 async function downloadFromBlockchain() {
+    if (isGoogleUser) {
+        renderPasswords();
+        return;
+    }
     try {
         showProcessing("📥 A Carregar Senhas", "Estamos a procurar as suas senhas guardadas na Internet. Por favor, aguarde...");
         const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -449,7 +565,7 @@ async function downloadFromBlockchain() {
             if (dec) {
                 setLocalStorageEncrypted('my_passwords', dec);
                 lastSyncedData = data;
-                localStorage.setItem('last_sync_hash', calculateHash(dec));
+                localStorage.setItem(getLastSyncHashKey(), calculateHash(dec));
                 console.log(`✅ ${dec.length} senhas carregadas com sucesso!`);
             } else {
                 showError("⚠️ Dados Corrompidos", "Houve um problema ao ler os dados. Tente novamente mais tarde.");
@@ -486,11 +602,15 @@ function renderPasswords(openId = null) {
     }
     
     const currentHash = calculateHash(passwords);
-    const lastHash = localStorage.getItem('last_sync_hash') || '';
-    
-    statusText.innerHTML = (lastHash && currentHash === lastHash) 
-        ? "<span style='color:var(--success)'>✅ Todas as suas senhas estão guardadas com segurança na Internet</span>" 
-        : "<span style='color:var(--warning)'>⚠️ Tem senhas novas que ainda não foram guardadas. Clique no botão \"Guardar\" para as proteger.</span>";
+    const lastHash = localStorage.getItem(getLastSyncHashKey()) || '';
+
+    if (isGoogleUser) {
+        statusText.innerHTML = "<span style='color:var(--success)'>✅ Conta Web2: as senhas estão guardadas apenas neste dispositivo.</span>";
+    } else {
+        statusText.innerHTML = (lastHash && currentHash === lastHash) 
+            ? "<span style='color:var(--success)'>✅ Todas as suas senhas estão guardadas com segurança na Internet</span>" 
+            : "<span style='color:var(--warning)'>⚠️ Tem senhas novas que ainda não foram guardadas. Clique no botão \"Guardar\" para as proteger.</span>";
+    }
 
     passwords.forEach((p) => {
         const isOpen = p.id === openId;
@@ -578,32 +698,32 @@ async function deleteAndSync(id) {
         passwords = passwords.filter(p => p.id !== id);
         const enc = encryptFull(passwords);
 
+        if (isGoogleUser) {
+            setLocalStorageEncrypted('my_passwords', passwords);
+            localStorage.setItem(getLastSyncHashKey(), calculateHash(passwords));
+            renderPasswords();
+            showProcessing("✅ Eliminada!", "A senha foi removida.");
+            setTimeout(hideProcessing, 1500);
+            return;
+        }
+
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // 🔴 FIX: Usar endereço DINÂMICO baseado na rede atual
         const contractAddr = getContractAddressForCurrentNetwork();
         if (!contractAddr) {
-            console.error('❌ ERRO: getContractAddressForCurrentNetwork() retornou null!');
             showError("❌ Erro de Configuração", "Não conseguimos obter o endereço do contrato. Recarregue a página.");
             return;
         }
-        
         if (!contractAddr.startsWith('0x') || contractAddr.length !== 42) {
-            console.error(`❌ ERRO: Endereço inválido: ${contractAddr}`);
             showError("❌ Erro de Configuração", "Endereço do contrato inválido.");
             return;
         }
-        
-        console.log(`🗑️ A eliminar senha do contrato: ${contractAddr}`);
         const contract = new ethers.Contract(contractAddr, abi, provider.getSigner());
         const tx = await contract.salvarCofre(enc);
         await tx.wait();
-        
         setLocalStorageEncrypted('my_passwords', passwords);
         lastSyncedData = enc;
-        localStorage.setItem('last_sync_hash', calculateHash(passwords));
+        localStorage.setItem(getLastSyncHashKey(), calculateHash(passwords));
         renderPasswords();
-        
         showProcessing("✅ Eliminada!", "A senha foi removida de forma permanente.");
         setTimeout(hideProcessing, 1500);
     } catch (e) { 
@@ -683,7 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
 
     // No telemóvel: esperar um pouco pela injeção do provider (MetaMask in-app injeta com atraso).
-    // Só depois mostrar "Abrir na MetaMask" se ainda não houver window.ethereum.
     const mobileHint = document.getElementById('mobile-metamask-hint');
     const mobileLink = document.getElementById('mobile-metamask-link');
     if (mobileHint && mobileLink && isMobile()) {
@@ -694,6 +813,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Inicializar botão Google quando o script GIS estiver carregado
+    initGoogleSignIn();
 
     const btnConnect = document.getElementById('btnConnect');
     if (btnConnect) btnConnect.addEventListener('click', connectWallet);

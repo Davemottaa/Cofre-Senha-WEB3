@@ -209,7 +209,10 @@
             </div>
 
             <hr style="margin: 25px 0;">
-            
+
+            <div id="web2-notice" style="display: none; background: #e8f4f8; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid var(--primary);">
+                <p style="margin: 0; font-size: 14px; color: #333;"><strong>Conta Web2 (Google)</strong> – As senhas ficam guardadas apenas neste dispositivo.</p>
+            </div>
             <div id="sync-status-area">
                 <h3 id="sync-status-text" style="text-align: center; font-size: 14px; font-weight: bold; margin: 15px 0;">...</h3>
                 <button class="btn-blockchain-recover" onclick="downloadFromBlockchain()" style="font-size: 15px;">
@@ -230,6 +233,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="app.js"></script>
 </body>
 </html>

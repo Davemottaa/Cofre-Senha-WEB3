@@ -4,9 +4,10 @@ Um gestor de senhas descentralizado e seguro baseado em Ethereum, que permite ar
 
 ## ✨ Funcionalidades
 
-- 🔒 **Encriptação AES-256**: Todas as senhas são encriptadas localmente antes de serem enviadas para o blockchain
-- 🌐 **Web3 integrado**: Autenticação via MetaMask com assinatura de mensagem
-- ⛓️ **Blockchain Ethereum**: Armazenamento descentralizado das senhas encriptadas (rede Sepolia)
+- 🔐 **Dois tipos de login**: **Web3** (MetaMask) e **Web2** (Google)
+- 🔒 **Encriptação AES-256**: Todas as senhas são encriptadas localmente
+- 🌐 **Web3**: MetaMask + blockchain Sepolia para guardar senhas na Internet
+- 📧 **Web2**: Login com Google; senhas guardadas apenas no dispositivo (localStorage)
 - 🎨 **Dark mode**: Interface com tema escuro/claro
 - 👴 **Acessibilidade**: Botões e texto ampliados, alto contraste, confirmação em modais para ações sensíveis
 - 🔄 **Sincronização**: Hash SHA-256 para detectar alterações e estado “guardado na Internet”
@@ -36,27 +37,34 @@ Um gestor de senhas descentralizado e seguro baseado em Ethereum, que permite ar
    # Aceda a http://localhost:8000
    ```
 
-3. **Configure o MetaMask**
+3. **Configure o MetaMask** (para login Web3)
    - Instale a extensão MetaMask
    - Crie ou importe uma carteira
    - Mude para a rede **Sepolia Testnet**
 
+4. **Configure o Google** (opcional, para login Web2)
+   - Crie um projeto em [Google Cloud Console](https://console.cloud.google.com/)
+   - Ative a API "Google Identity Services"
+   - Crie credenciais **OAuth 2.0 – ID de cliente** (tipo: Aplicação da Web)
+   - Em **app.js**, defina `GOOGLE_CLIENT_ID` com o seu Client ID
+
 ## 📖 Como usar
 
-1. **Conectar ao cofre**  
-   Clique em "Entrar no meu Cofre", autorize na MetaMask e assine a mensagem. O app carrega automaticamente as senhas guardadas.
+1. **Conectar ao cofre**
+   - **Web3:** Clique em "Entrar com MetaMask (Web3)", autorize na MetaMask e assine a mensagem. As senhas são carregadas da blockchain.
+   - **Web2:** Clique no botão "Continuar com o Google". As senhas ficam apenas neste dispositivo.
 
 2. **Adicionar senha**  
-   Preencha o nome do site, utilizador/email (opcional) e senha. Use "Criar" para gerar uma senha forte (8–32 caracteres, opções configuráveis). Clique em "Guardar Senha" e confirme a transação na MetaMask.
+   Preencha o nome do site, utilizador/email (opcional) e senha. Use "Criar" para gerar uma senha forte. Clique em "Guardar Senha". Em Web3 confirme na MetaMask; em Web2 a senha é guardada só no dispositivo.
 
 3. **Ver / copiar senha**  
    Clique em "Ver", confirme no modal. A senha fica visível 30 segundos (auto-oculta). Use "Copiar" para colar noutro sítio.
 
 4. **Apagar senha**  
-   Clique em "Apagar", confirme no modal. A senha é removida da blockchain.
+   Clique em "Apagar", confirme no modal. Em Web3 a senha é removida da blockchain; em Web2 é removida do dispositivo.
 
 5. **Desconectar**  
-   Use o botão de logout. As senhas continuam guardadas na blockchain; pode voltar a entrar com a mesma carteira.
+   Use o botão de logout. Em Web3 as senhas ficam na blockchain; em Web2 ficam no dispositivo. Pode voltar a entrar com a mesma conta (MetaMask ou Google).
 
 ## 🛠️ Estrutura do projeto
 
