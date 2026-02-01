@@ -179,7 +179,10 @@
             <div class="input-group">
                 <label style="font-weight: bold; font-size: 15px;">🔐 A Sua Senha Secreta</label>
                 <div class="input-with-button">
-                    <input type="text" id="sitePass" placeholder="Escreva uma senha ou clique em Criar para gerar uma" style="font-size: 15px;">
+                    <input type="password" id="sitePass" placeholder="Escreva uma senha ou clique em Criar para gerar uma" style="font-size: 15px;" autocomplete="off">
+                    <button type="button" id="toggle-pass-visibility" class="btn-card btn-toggle-pass" style="flex: none; padding: 12px 14px;" title="Mostrar/ocultar senha" aria-label="Mostrar senha">
+                        <i class="fas fa-eye" id="toggle-pass-icon"></i>
+                    </button>
                     <button id="btn-copy-generated" onclick="copyGeneratedPass()" class="btn-card btn-copiar" style="display:none; font-size: 13px;">
                         <i class="fas fa-copy"></i> Copiar
                     </button>

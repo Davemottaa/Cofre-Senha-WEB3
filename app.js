@@ -1,3 +1,4 @@
+
 let encryptionKey = null;
 let lastSyncedData = "";
 let visiblePasswordTimeout = null;
@@ -10,7 +11,7 @@ const SUPPORTED_NETWORKS = {
     11155111: { // Sepolia
         name: 'Sepolia Testnet',
         contractAddress: '0x95D234085B83Ec63487CF37Df6DF5Fae0B6D4be6',
-        rpcUrl: 'https://sepolia.infura.io/v3/cbb0240f1d5d4615a57103b1378e6871'
+        rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY'
     }
 };
 
@@ -47,6 +48,9 @@ function getContractAddressForCurrentNetwork() {
     console.log(`✅ Usando contrato da ${network.name}: ${contractAddr}`);
     return contractAddr;
 }
+
+// Tamanho mínimo para considerar que há dados criptografados no cofre (evita "magic number")
+const MIN_ENCRYPTED_LENGTH = 20;
 
 const abi = [
     { "inputs": [{ "internalType": "string", "name": "_novosDados", "type": "string" }], "name": "salvarCofre", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
@@ -217,40 +221,46 @@ function encryptFull(data) {
 }
 function decryptFull(cipher) {
     try {
-        if (!cipher || typeof cipher !== 'string' || cipher.length < 20) {
-            console.error('Cifra inválida ou corrompida');
-            return null;
-        }
-        if (!encryptionKey) {
-            console.error('Chave de encriptação não disponível');
-            return null;
-        }
+        if (!cipher || typeof cipher !== 'string') return null;
+        if (!encryptionKey) return null;
         
         const bytes = CryptoJS.AES.decrypt(cipher, encryptionKey);
-        if (!bytes || bytes.length === 0) {
-            console.error('Falha ao desencriptar - dados vazios');
+        const plaintext = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!plaintext) {
+            console.error('Falha na descriptografia: Chave incorreta ou dado inválido.');
             return null;
         }
         
-        const plaintext = bytes.toString(CryptoJS.enc.Utf8);
         return JSON.parse(plaintext);
     } catch (e) { 
-        console.error('Erro ao desencriptar dados:', e);
+        console.error('Erro crítico no JSON.parse ou Decrypt:', e);
         return null; 
     }
 }
 
 // --- WEB3 ---
+/**
+ * DOCUMENTAÇÃO:
+ * - ethers.providers.Web3Provider: Conecta ao provedor da MetaMask.
+ * - getContractAddressForCurrentNetwork: Garante que estamos a falar com o contrato certo na rede certa.
+ * - CryptoJS.AES.encrypt: Transforma o texto simples em "lixo" legível apenas com a chave Keccak256.
+ */
+
+// --- FIX: Removi o erro de sintaxe no início da connectWallet ---
 async function connectWallet() {
     if (!window.ethereum) {
-        showError("❌ MetaMask Não Encontrada", "Você precisa instalar a extensão MetaMask no navegador.");
+        showError("❌ MetaMask Não Encontrada", "Por favor, instale a MetaMask.");
         return;
     }
+
     try {
-        showProcessing("🔐 A Conectar à Carteira", "Por favor, confirme na janela da MetaMask.");
+        showProcessing("🔐 A Conectar", "Confirme na MetaMask...");
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         
-        if (!await validateNetwork()) {
+        // Valida a rede antes de qualquer coisa
+        const networkOk = await validateNetwork();
+        if (!networkOk) {
             hideProcessing();
             return;
         }
@@ -259,15 +269,17 @@ async function connectWallet() {
         const signer = provider.getSigner();
         currentUser = await signer.getAddress();
         
-        // MENSAGEM FIXA: Essencial para que a chave de encriptação seja sempre a mesma
-        const message = "Aceder ao Cofre Seguro: Confirme a sua identidade para desencriptar os seus dados.";
-        
-        showProcessing("✍️ A Assinar Mensagem", "Confirme a assinatura na MetaMask.");
+        // Criar chave de encriptação baseada na assinatura do utilizador.
+        // IMPORTANTE: Mensagem fixa para que, ao sair e voltar, a mesma chave seja gerada
+        // e os dados guardados (localStorage + blockchain) possam ser desencriptados.
+        const message = "Aceder ao Cofre Seguro";
+        showProcessing("✍️ A Assinar", "Isto cria a sua chave de segurança privada.");
         const sig = await signer.signMessage(message);
         
-        // A chave agora é gerada de forma determinística baseada na assinatura fixa
+        // A chave AES é gerada a partir do hash da assinatura
         encryptionKey = ethers.utils.keccak256(sig);
         
+        // Interface
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('app-section').style.display = 'block';
         document.getElementById('logout-btn').style.display = 'block';
@@ -275,7 +287,8 @@ async function connectWallet() {
         
         await downloadFromBlockchain();
     } catch (e) { 
-        showError("❌ Erro ao Conectar", "Certifique-se de que confirmou a assinatura na MetaMask.");
+        console.error(e);
+        showError("❌ Erro ao Conectar", "Conexão recusada ou falhou.");
     }
 }
 function logout() {
@@ -301,35 +314,47 @@ async function saveAndSync() {
     const user = document.getElementById('siteUser').value.trim();
     const pass = document.getElementById('sitePass').value;
 
-    if (!validatePasswordEntry(site, user, pass)) return;
+    // Validar entrada antes de processar
+    if (!validatePasswordEntry(site, user, pass)) {
+        return;
+    }
+    
+    // Verificar se está na rede correta
     if (!isOnCorrectNetwork) {
-        showError("❌ Rede Errada", "Mude para Sepolia na MetaMask.");
+        showError("❌ Rede Errada", "Você não está na rede Sepolia!\n\nPor favor:\n1. Abra a MetaMask\n2. Mude para Sepolia Testnet\n3. Tente novamente");
         return;
     }
 
     try {
-        showProcessing("💾 A Guardar a Senha", "Encriptando dados...");
+        showProcessing("💾 A Guardar a Senha", "Estamos a encriptar e guardar a sua senha com segurança. Por favor, aguarde...");
         let passwords = getLocalStorageEncrypted('my_passwords') || [];
         passwords.push({ id: Date.now(), site, user, pass });
-        
         const enc = encryptFull(passwords);
 
-        // Alerta de custo se os dados ficarem muito grandes
-        if (enc.length > 5000) {
-            console.warn("Atenção: O cofre está a ficar grande. O custo de Gas será elevado.");
-        }
-
         const provider = new ethers.providers.Web3Provider(window.ethereum);
+        
+        // 🔴 FIX: Usar endereço DINÂMICO baseado na rede atual
         const contractAddr = getContractAddressForCurrentNetwork();
+        if (!contractAddr) {
+            console.error('❌ ERRO: getContractAddressForCurrentNetwork() retornou null ou inválido!');
+            console.error(`   isOnCorrectNetwork: ${isOnCorrectNetwork}`);
+            console.error(`   currentNetworkChainId: ${currentNetworkChainId}`);
+            showError("❌ Erro de Configuração", "Não conseguimos obter o endereço do contrato.\n\nPor favor:\n1. Recarregue a página (F5)\n2. Desconecte e conecte novamente na MetaMask\n3. Tente novamente");
+            return;
+        }
         
-        if (!contractAddr) return;
+        // Verificar se o endereço é válido (formato Ethereum)
+        if (!contractAddr.startsWith('0x') || contractAddr.length !== 42) {
+            console.error(`❌ ERRO: Endereço do contrato inválido: ${contractAddr}`);
+            showError("❌ Erro de Configuração", "Endereço do contrato inválido. Contacte o suporte.");
+            return;
+        }
         
+        console.log(`📝 A guardar senha para contrato: ${contractAddr}`);
         const contract = new ethers.Contract(contractAddr, abi, provider.getSigner());
-        
-        // O envio da transação para a rede
         const tx = await contract.salvarCofre(enc);
         
-        showProcessing("⏳ Confirmando na Blockchain", "Aguardando confirmação da rede...");
+        showProcessing("⏳ Confirmando na Internet", "A rede está a confirmar a sua ação. Isto pode demorar alguns segundos...");
         await tx.wait();
 
         setLocalStorageEncrypted('my_passwords', passwords);
@@ -337,15 +362,18 @@ async function saveAndSync() {
         localStorage.setItem('last_sync_hash', calculateHash(passwords));
         renderPasswords();
         
-        showProcessing("✅ Sucesso!", "Senha guardada na Blockchain!");
+        // Mostrar sucesso
+        showProcessing("✅ Sucesso!", "A sua senha foi guardada com segurança!");
         setTimeout(hideProcessing, 2000);
         
-        // Limpar campos
+        // Limpar inputs após sucesso
         document.getElementById('siteName').value = "";
         document.getElementById('siteUser').value = "";
         document.getElementById('sitePass').value = "";
+        document.getElementById('btn-copy-generated').style.display = 'none';
     } catch (e) { 
-        showError("❌ Erro ao Guardar", e.message || "Falha na transação.");
+        console.error('❌ ERRO COMPLETO ao guardar:', e);
+        showError("❌ Erro ao Guardar", "Não conseguimos guardar a senha. Tente novamente. Erro: " + (e.message || "Falha desconhecida"));
     }
 }
 
@@ -371,7 +399,7 @@ async function downloadFromBlockchain() {
         console.log(`📥 A carregar senhas do contrato: ${contractAddr}`);
         const contract = new ethers.Contract(contractAddr, abi, provider.getSigner());
         const data = await contract.recuperarCofre();
-        if(data && data.length > 20) {
+        if (data && data.length > MIN_ENCRYPTED_LENGTH) {
             const dec = decryptFull(data);
             if (dec) {
                 setLocalStorageEncrypted('my_passwords', dec);
@@ -388,9 +416,10 @@ async function downloadFromBlockchain() {
             setTimeout(hideProcessing, 2000);
         }
         renderPasswords();
-        if(data && data.length > 20) hideProcessing();
+        if (data && data.length > MIN_ENCRYPTED_LENGTH) hideProcessing();
     } catch (e) { 
         console.error('❌ ERRO ao carregar:', e);
+        hideProcessing();
         showError("❌ Erro ao Carregar", "Não conseguimos aceder às senhas guardadas. Verifique a sua ligação à Internet e tente novamente.");
     }
 }
@@ -402,6 +431,14 @@ function renderPasswords(openId = null) {
     const statusText = document.getElementById('sync-status-text');
 
     list.innerHTML = '';
+
+    if (passwords.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'pass-list-empty';
+        emptyMsg.style.cssText = 'text-align: center; color: var(--text); opacity: 0.8; padding: 20px; font-size: 15px;';
+        emptyMsg.textContent = 'Ainda não tem senhas guardadas. Use o formulário acima para adicionar a primeira.';
+        list.appendChild(emptyMsg);
+    }
     
     const currentHash = calculateHash(passwords);
     const lastHash = localStorage.getItem('last_sync_hash') || '';
@@ -410,7 +447,7 @@ function renderPasswords(openId = null) {
         ? "<span style='color:var(--success)'>✅ Todas as suas senhas estão guardadas com segurança na Internet</span>" 
         : "<span style='color:var(--warning)'>⚠️ Tem senhas novas que ainda não foram guardadas. Clique no botão \"Guardar\" para as proteger.</span>";
 
-    passwords.forEach(p => {
+    passwords.forEach((p) => {
         const isOpen = p.id === openId;
         const card = document.createElement('div');
         card.className = 'pass-card';
@@ -578,25 +615,45 @@ function copyGeneratedPass() {
     }
 }
 
-function renderPasswords(openId = null) {
-    const list = document.getElementById('passwordList');
-    const passwords = getLocalStorageEncrypted('my_passwords') || [];
-    const statusText = document.getElementById('sync-status-text');
-
-    list.innerHTML = '';
-    
-    const currentHash = calculateHash(passwords);
-    const lastHash = localStorage.getItem('last_sync_hash') || '';
-    
-    // Feedback visual sobre o estado de sincronização com a blockchain
-    if (lastHash && currentHash === lastHash) {
-        statusText.innerHTML = "<span style='color:var(--success)'>● Sincronizado com a Blockchain</span>";
+function togglePasswordVisibility() {
+    const input = document.getElementById('sitePass');
+    const icon = document.getElementById('toggle-pass-icon');
+    if (!input || !icon) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+        icon.parentElement.setAttribute('aria-label', 'Ocultar senha');
     } else {
-        statusText.innerHTML = "<span style='color:var(--warning)'>● Alterações pendentes (Clique em Guardar)</span>";
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+        icon.parentElement.setAttribute('aria-label', 'Mostrar senha');
     }
-
-    // ... restante da lógica de criação de cards (mantida igual)
 }
 
 // Inicializa tema ao carregar
 document.addEventListener('DOMContentLoaded', initTheme);
+// --- INICIALIZAÇÃO E EVENTOS ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+
+    const btnConnect = document.getElementById('btnConnect');
+    if (btnConnect) btnConnect.addEventListener('click', connectWallet);
+
+    const btnSave = document.getElementById('btnSave');
+    if (btnSave) btnSave.addEventListener('click', saveAndSync);
+
+    const btnLogout = document.getElementById('logout-btn');
+    if (btnLogout) btnLogout.addEventListener('click', logout);
+
+    const btnRefresh = document.querySelector('.btn-blockchain-recover');
+    if (btnRefresh) btnRefresh.addEventListener('click', downloadFromBlockchain);
+
+    const btnTogglePass = document.getElementById('toggle-pass-visibility');
+    if (btnTogglePass) btnTogglePass.addEventListener('click', togglePasswordVisibility);
+});
+
+// Tornar funções acessíveis para chamadas dinâmicas (como no renderPasswords)
+window.askToView = askToView;
+window.askToDelete = askToDelete;
+window.copyToClipboard = copyToClipboard;

@@ -73,6 +73,15 @@ html[data-theme="dark"] input {
     display: none;
 }
 
+.btn-toggle-pass {
+    background: #95a5a6;
+    min-width: 50px;
+}
+
+.btn-toggle-pass:hover {
+    opacity: 0.9;
+}
+
 .action-row { display: flex; gap: 10px; margin-top: 15px; }
 button { border: none; border-radius: 15px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 15px; }
 
