@@ -146,9 +146,19 @@
                     <strong>Primeiro passo:</strong> Clique no botão abaixo para conectar a sua carteira MetaMask.
                 </p>
             </div>
-            <button class="btn-main" onclick="connectWallet()" style="font-size: 18px; padding: 20px;">
+            <button class="btn-main" id="btn-connect-cofre" onclick="connectWallet()" style="font-size: 18px; padding: 20px;">
                 <i class="fas fa-key"></i> Entrar no meu Cofre
             </button>
+            <!-- No telemóvel (Chrome/Safari) a MetaMask não injeta ethereum; mostrar botão para abrir na app -->
+            <div id="mobile-metamask-hint" style="display: none; margin-top: 20px; padding: 15px; background: #e8f4f8; border-radius: 15px; border-left: 4px solid var(--primary); text-align: left;">
+                <p style="margin: 0 0 12px 0; font-size: 14px; color: #333; line-height: 1.5;">
+                    <strong>📱 No telemóvel?</strong><br>
+                    Para autorizar o login, abra este site na aplicação MetaMask. Toque no botão abaixo:
+                </p>
+                <a id="mobile-metamask-link" href="#" class="btn-main" style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; font-size: 16px; padding: 16px 24px;">
+                    <i class="fas fa-external-link-alt"></i> Abrir na MetaMask
+                </a>
+            </div>
         </div>
 
         <!-- SECÇÃO APP -->

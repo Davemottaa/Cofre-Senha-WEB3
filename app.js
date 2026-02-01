@@ -241,15 +241,29 @@ function decryptFull(cipher) {
 
 // --- WEB3 ---
 /**
- * DOCUMENTAÇÃO:
- * - ethers.providers.Web3Provider: Conecta ao provedor da MetaMask.
- * - getContractAddressForCurrentNetwork: Garante que estamos a falar com o contrato certo na rede certa.
- * - CryptoJS.AES.encrypt: Transforma o texto simples em "lixo" legível apenas com a chave Keccak256.
+ * No telemóvel (Chrome/Safari), window.ethereum não é injetado. O utilizador tem de abrir
+ * o site no navegador da aplicação MetaMask para poder autorizar o login.
+ * Usamos o deep link link.metamask.io/dapp/<url> para abrir o site dentro da MetaMask.
  */
 
-// --- FIX: Removi o erro de sintaxe no início da connectWallet ---
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 0 && window.innerWidth < 1024);
+}
+
+/** URL para abrir este site no navegador in-app da MetaMask (mobile). */
+function getMetaMaskDappUrl() {
+    const url = window.location.href;
+    return 'https://link.metamask.io/dapp/' + encodeURIComponent(url);
+}
+
 async function connectWallet() {
     if (!window.ethereum) {
+        if (isMobile()) {
+            // No telemóvel: redirecionar para abrir o site na MetaMask e mostrar o ecrã de autorização
+            window.location.href = getMetaMaskDappUrl();
+            return;
+        }
         showError("❌ MetaMask Não Encontrada", "Por favor, instale a MetaMask.");
         return;
     }
@@ -636,6 +650,14 @@ document.addEventListener('DOMContentLoaded', initTheme);
 
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+
+    // No telemóvel sem MetaMask injetada: mostrar botão "Abrir na MetaMask"
+    const mobileHint = document.getElementById('mobile-metamask-hint');
+    const mobileLink = document.getElementById('mobile-metamask-link');
+    if (mobileHint && mobileLink && isMobile() && !window.ethereum) {
+        mobileHint.style.display = 'block';
+        mobileLink.href = getMetaMaskDappUrl();
+    }
 
     const btnConnect = document.getElementById('btnConnect');
     if (btnConnect) btnConnect.addEventListener('click', connectWallet);
